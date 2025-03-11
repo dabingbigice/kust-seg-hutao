@@ -9,7 +9,7 @@ from PyQt5.Qt import *
 
 from model.deeplab import DeeplabV3
 from other import buttn
-from msg_send import send_to_stm32
+from msg_send import Stm32SendMsg
 
 videoWidth = 512
 videoHeight = 512
@@ -29,6 +29,7 @@ class FixedCameraApp(QWidget):
         self.msgLabel = msgLabel
         self.msgLabel.adjustSize()
         self.flag = 0
+        self.stm32SendMsg = Stm32SendMsg(port="COM7", baudrate=9600)
 
     def stop(self):
         if self.timer.isActive():
@@ -89,13 +90,23 @@ class FixedCameraApp(QWidget):
             # 转变成Image
             frame = Image.fromarray(np.uint8(frame))
             # 进行检测
-            img, text = self.deeplab.detect_image(frame, count=True, name_classes=["background", "hutao"])
-            send_to_stm32(message=str(self.flag))
+            img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=["background", "hutao"])
 
-            if self.flag == 0:
+            if ratio > 1:
                 self.flag = 1
             else:
                 self.flag = 0
+            t2 = time.time()
+            # 发送指令
+            self.stm32SendMsg.send_to_stm32(message=str(self.flag))
+            # 计算延迟
+            delta_ms = (t2 - t1) * 1000
+            print(f"发送指令延迟: {delta_ms:.3f} 毫秒")
+            #
+            # if self.flag == 0:
+            #     self.flag = 1
+            # else:
+            #     self.flag = 0
             frame = np.array(img)
 
             # RGBtoBGR满足opencv显示格式

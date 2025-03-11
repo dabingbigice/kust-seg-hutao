@@ -221,7 +221,7 @@ class DeeplabV3(object):
             # ------------------------------------------------#
             image = Image.fromarray(np.uint8(seg_img))
 
-        return image,text
+        return image,text,ratio
 
     def get_FPS(self, image, test_interval):
         # ---------------------------------------------------------#
