@@ -1,0 +1,2 @@
+1.pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 -f https://mirrors.aliyun.com/pytorch-wheels/cu118
+2.pip install opencv-python==4.1.2.30 PyQt5 pyserial

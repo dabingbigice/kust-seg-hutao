@@ -13,6 +13,8 @@ from msg_send import Stm32SendMsg
 
 videoWidth = 512
 videoHeight = 512
+video_port = 0 + cv2.CAP_DSHOW
+port = 'COM3'
 
 
 class FixedCameraApp(QWidget):
@@ -20,16 +22,16 @@ class FixedCameraApp(QWidget):
         super().__init__(parent)
         # 初始化窗口和摄像头
         self.initUI()
-        self.capture = cv2.VideoCapture(1)  # 直接打开摄像头
+        self.capture = cv2.VideoCapture(video_port)  # 直接打开摄像头
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
         self.timer_id = self.timer.timerId()
-        self.timer.start(30)  # 自动启动刷新
+        self.timer.start(1)  # 自动启动刷新
         self.deeplab = DeeplabV3()
         self.msgLabel = msgLabel
         self.msgLabel.adjustSize()
         self.flag = 0
-        self.stm32SendMsg = Stm32SendMsg(port="COM7", baudrate=9600)
+        self.stm32SendMsg = Stm32SendMsg(port=port, baudrate=9600)
 
     def stop(self):
         if self.timer.isActive():
@@ -45,7 +47,7 @@ class FixedCameraApp(QWidget):
         if not self.capture.isOpened():
             try:
                 # 尝试重新打开摄像头（兼容多平台）
-                success = self.capture.open(1)
+                success = self.capture.open(video_port)
                 if not success:
                     print("摄像头启动失败：设备可能被占用或不存在")
                     return False
@@ -55,7 +57,7 @@ class FixedCameraApp(QWidget):
 
         # 启动定时器（如果未运行）
         if not self.timer.isActive():
-            self.timer.start(30)  # 30ms间隔（约33帧/秒）
+            self.timer.start(1)  # 30ms间隔（约33帧/秒）
 
         # 恢复显示区域（可选）
         self.label.setStyleSheet("background-color: none;")
@@ -83,25 +85,30 @@ class FixedCameraApp(QWidget):
         # todo frame丢进模型里，然后在界面显示融合后的图片
         fps = 0.0
         if ret:
-            t1 = time.time()
             frame = cv2.resize(frame, (videoWidth, videoHeight))
             # 格式转变，BGRtoRGB
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             # 转变成Image
             frame = Image.fromarray(np.uint8(frame))
+            t1 = time.time()
             # 进行检测
             img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=["background", "hutao"])
+            t2 = time.time()
+            fps = (fps + (1. / (t2 - t1))) / 2
 
-            if ratio > 1:
+            delta_ms = (t2 - t1) * 1000
+            print(f"模型检测速度: {delta_ms:.3f} 毫秒")
+            if ratio > 2:
                 self.flag = 1
             else:
                 self.flag = 0
-            t2 = time.time()
+            t3 = time.time()
             # 发送指令
             self.stm32SendMsg.send_to_stm32(message=str(self.flag))
             # 计算延迟
-            delta_ms = (t2 - t1) * 1000
-            print(f"发送指令延迟: {delta_ms:.3f} 毫秒")
+            t4 = time.time()
+            print(f"串口发送延迟: {t4 - t3:.6f} 毫秒")
+
             #
             # if self.flag == 0:
             #     self.flag = 1
