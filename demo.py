@@ -9,7 +9,7 @@ from PyQt5.Qt import *
 
 from model.deeplab import DeeplabV3
 from other import buttn
-from msg_send import Stm32SendMsg
+from msg_send import stm32Serial
 
 videoWidth = 512
 videoHeight = 512
@@ -18,20 +18,28 @@ port = 'COM3'
 
 
 class FixedCameraApp(QWidget):
-    def __init__(self, parent, msgLabel):
+    '''
+    x,y代表窗口位置
+    stm32Serial=串口对象
+    cap_port=摄像头编号
+    msgLabel=输出标签
+    '''
+
+    def __init__(self, parent, msgLabel, stm32Serial, cap_port=video_port, x=(desktop.width() - 512) // 2, y=0):
         super().__init__(parent)
         # 初始化窗口和摄像头
         self.initUI()
-        self.capture = cv2.VideoCapture(video_port)  # 直接打开摄像头
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_frame)
+        self.capture = cv2.VideoCapture(cap_port)  # 直接打开摄像头
+        self.timer = QTimer()  # 定时器
+        self.timer.timeout.connect(self.update_frame)  # 插槽
         self.timer_id = self.timer.timerId()
         self.timer.start(1)  # 自动启动刷新
-        self.deeplab = DeeplabV3()
-        self.msgLabel = msgLabel
-        self.msgLabel.adjustSize()
+        self.deeplab = DeeplabV3()  # 初始化模型
+        self.msgLabel = msgLabel  # 输出消息
+        self.msgLabel.adjustSize()  # 输出消息自适应大小
         self.flag = 0
-        self.stm32SendMsg = Stm32SendMsg(port=port, baudrate=9600)
+        # self.stm32Serial = stm32Serial(port=port, baudrate=9600)  # 发送消息
+        self.stm32Serial = stm32Serial  # 发送消息
 
     def stop(self):
         if self.timer.isActive():
@@ -67,9 +75,9 @@ class FixedCameraApp(QWidget):
         self.setWindowTitle("固定尺寸摄像头")
         # 计算屏幕中心坐标
         desktop = QDesktopWidget().availableGeometry()
-        x = (desktop.width() - 512) // 2
-        y = (desktop.height() - 512) // 2
-        self.setGeometry(x, 0, videoWidth, videoHeight)  # 左上角坐标(0,0)，尺寸512x512
+        # x = (desktop.width() - 512) // 2
+        # y = (desktop.height() - 512) // 2
+        self.setGeometry(x, y, videoWidth, videoHeight)  # 左上角坐标(0,0)，尺寸512x512
         self.setFixedSize(videoWidth, videoHeight)  # 禁止调整窗口大小
         # 视频显示区域
         self.label = QLabel(self)
@@ -104,7 +112,7 @@ class FixedCameraApp(QWidget):
                 self.flag = 0
             t3 = time.time()
             # 发送指令
-            self.stm32SendMsg.send_to_stm32(message=str(self.flag))
+            self.stm32Serial.send_to_stm32(message=str(self.flag))
             # 计算延迟
             t4 = time.time()
             print(f"串口发送延迟: {t4 - t3:.6f} 毫秒")
@@ -146,6 +154,7 @@ class FixedCameraApp(QWidget):
             self.capture.release()
         self.timer.stop()
         event.accept()
+        self.stm32Serial.close_serial()
 
 
 if __name__ == "__main__":
@@ -156,10 +165,11 @@ if __name__ == "__main__":
     label = QLabel(frame)
     label.move((desktop.width() - 512) // 2, 512)
     label.setText("test")
-    capWindow = FixedCameraApp(frame, label)
+    # 0号摄像头
+    capWindow = FixedCameraApp(frame, label, stm32Serial(port=port, baudrate=9600), cap_port=video_port)
+
     desktop = QDesktopWidget().availableGeometry()
     buttn.StartButtn(frame, capWindow)
-
     frame.resize(desktop.width(), desktop.height())
     frame.move(0, 0)
     frame.show()
