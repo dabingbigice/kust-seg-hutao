@@ -3,7 +3,7 @@ import time
 import binascii
 
 
-class Stm32SendMsg:
+class stm32Serial:
     def __init__(self, port, baudrate):
         self.ser = serial.Serial(port, baudrate, timeout=1)
         print(f'初始化stm32串口对象={self.ser}')

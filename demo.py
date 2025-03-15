@@ -14,7 +14,7 @@ from msg_send import stm32Serial
 videoWidth = 512
 videoHeight = 512
 video_port = 0 + cv2.CAP_DSHOW
-port = 'COM3'
+port = 'COM4'
 
 
 class FixedCameraApp(QWidget):
@@ -25,7 +25,7 @@ class FixedCameraApp(QWidget):
     msgLabel=输出标签
     '''
 
-    def __init__(self, parent, msgLabel, stm32Serial, cap_port=video_port, x=(desktop.width() - 512) // 2, y=0):
+    def __init__(self, parent, msgLabel, stm32Serial, cap_port=video_port, x=0, y=0):
         super().__init__(parent)
         # 初始化窗口和摄像头
         self.initUI()
@@ -40,6 +40,8 @@ class FixedCameraApp(QWidget):
         self.flag = 0
         # self.stm32Serial = stm32Serial(port=port, baudrate=9600)  # 发送消息
         self.stm32Serial = stm32Serial  # 发送消息
+        self.x = x
+        self.y = y
 
     def stop(self):
         if self.timer.isActive():
@@ -77,7 +79,7 @@ class FixedCameraApp(QWidget):
         desktop = QDesktopWidget().availableGeometry()
         # x = (desktop.width() - 512) // 2
         # y = (desktop.height() - 512) // 2
-        self.setGeometry(x, y, videoWidth, videoHeight)  # 左上角坐标(0,0)，尺寸512x512
+        self.setGeometry((desktop.width() - 512) // 2, 0, videoWidth, videoHeight)  # 左上角坐标(0,0)，尺寸512x512
         self.setFixedSize(videoWidth, videoHeight)  # 禁止调整窗口大小
         # 视频显示区域
         self.label = QLabel(self)
@@ -166,7 +168,8 @@ if __name__ == "__main__":
     label.move((desktop.width() - 512) // 2, 512)
     label.setText("test")
     # 0号摄像头
-    capWindow = FixedCameraApp(frame, label, stm32Serial(port=port, baudrate=9600), cap_port=video_port)
+    capWindow = FixedCameraApp(frame, label, stm32Serial(port=port, baudrate=9600), cap_port=video_port,
+                               x=(desktop.width() - 512) // 2)
 
     desktop = QDesktopWidget().availableGeometry()
     buttn.StartButtn(frame, capWindow)
