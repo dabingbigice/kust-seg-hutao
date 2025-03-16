@@ -58,7 +58,7 @@ class DeeplabV3(object):
         #   是否使用Cuda
         #   没有GPU可以设置成False
         # -------------------------------#
-        "cuda": True,
+        "cuda": False,
     }
 
     # ---------------------------------------------------#
@@ -117,7 +117,6 @@ class DeeplabV3(object):
         #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
         #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
         # ---------------------------------------------------------#
-
 
         image = cvtColor(image)
 
@@ -196,7 +195,8 @@ class DeeplabV3(object):
             text += "|%25s | %15s | %15s|" % ("Key", "Value", "Ratio") + "\n"
             print('-' * 63)
             text += '-' * 63 + "\n"
-
+            # hutao的像素比率
+            hutao_ratio = 0
             for i in range(self.num_classes):
                 num = np.sum(pr == i)
                 ratio = num / total_points_num * 100
@@ -206,6 +206,9 @@ class DeeplabV3(object):
                     text += '-' * 63 + "\n"
                     print('-' * 63)
                 classes_nums[i] = num
+                if i != 0:
+                    hutao_ratio = ratio
+
             print("classes_nums:", classes_nums)
             text += "classes_nums:"
             text += str(classes_nums)
@@ -249,7 +252,7 @@ class DeeplabV3(object):
             image = Image.fromarray(np.uint8(seg_img))
         t4 = time.time()
         print(f'deeplab后处理时间:{(t4 - t3) * 1000}ms')
-        return image, text, ratio
+        return image, text, hutao_ratio
 
 
 def get_FPS(self, image, test_interval):

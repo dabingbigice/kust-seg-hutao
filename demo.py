@@ -103,7 +103,7 @@ class FixedCameraApp(QWidget):
             frame = Image.fromarray(np.uint8(frame))
             t1 = time.time()
             # 进行检测
-            img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=["background", "hutao"])
+            img, text, hutao_ratio = self.deeplab.detect_image(frame, count=True, name_classes=["background", "hutao"])
             t2 = time.time()
             # TODO 检测完成之后开启另外一个线程去显示画面。
             delta_ms = (t2 - t1) * 1000
@@ -112,13 +112,13 @@ class FixedCameraApp(QWidget):
             # 偶数打开控制
             # 0号摄像头处理逻辑
             if self.id == 0:
-                if ratio > 2:
+                if hutao_ratio > 2:
                     self.flag = 0
                 else:
                     self.flag = 1
             # 1号摄像头处理逻辑
             if self.id == 1:
-                if ratio > 2:
+                if hutao_ratio > 2:
                     self.flag = 2
                 else:
                     self.flag = 3
