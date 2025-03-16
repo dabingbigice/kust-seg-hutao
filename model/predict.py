@@ -91,7 +91,10 @@ if __name__ == "__main__":
                 print('Open Error! Try again!')
                 continue
             else:
+                t1 = time.time()
                 r_image = deeplab.detect_image(image, count=count, name_classes=name_classes)
+                t2 = time.time()
+                print(f'depplab预测时间ms{t2 - t1}')
                 r_image.show()
 
     elif mode == "video":
@@ -266,7 +269,7 @@ def predict(mode,capture):
             # 转变成Image
             frame = Image.fromarray(np.uint8(frame))
             # 进行检测
-            frame = np.array(deeplab.detect_image(frame,count=True))
+            frame = np.array(deeplab.detect_image(frame, count=True))
             # RGBtoBGR满足opencv显示格式
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 

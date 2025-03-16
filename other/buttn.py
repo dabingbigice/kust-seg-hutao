@@ -4,16 +4,17 @@ from PyQt5 import QtCore
 from PyQt5.Qt import *
 
 
+
 class StartButtn(QWidget):
 
-    def __init__(self, frame, capWindow):
+    def __init__(self, frame, capWindow, x=0, y=0):
         super().__init__(frame)
         desktop = QDesktopWidget().availableGeometry()
         self.capWindow = capWindow
         self.buttn = QPushButton(frame)
         self.buttn.setText("暂停")
         self.buttn.resize(100, 50)
-        self.buttn.move(desktop.width() - desktop.width() // 3, 0)
+        self.buttn.move(x, y)
         self.buttn.clicked.connect(self.clickEvent)
 
     def clickEvent(self):

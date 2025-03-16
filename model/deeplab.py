@@ -53,7 +53,7 @@ class DeeplabV3(object):
         #   mix_type = 1的时候代表仅保留生成的图
         #   mix_type = 2的时候代表仅扣去背景，仅保留原图中的目标
         # -------------------------------------------------#
-        "mix_type": 0,
+        "mix_type": 2,
         # -------------------------------#
         #   是否使用Cuda
         #   没有GPU可以设置成False
@@ -117,32 +117,54 @@ class DeeplabV3(object):
         #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
         #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
         # ---------------------------------------------------------#
+
+
         image = cvtColor(image)
+
         # ---------------------------------------------------#
         #   对输入图像进行一个备份，后面用于绘图
         # ---------------------------------------------------#
-        old_img = copy.deepcopy(image)
+        if self.mix_type == 0 or self.mix_type == 2:
+            t_old_start = time.time()
+            old_img = copy.deepcopy(image)
+            t_old_end = time.time()
+            print(f'备份old的时间:{(t_old_end - t_old_start) * 1000}')
+        t1 = time.time()
         orininal_h = np.array(image).shape[0]
         orininal_w = np.array(image).shape[1]
+        t2 = time.time()
+        print(f' orininal_w:{(t2 - t1) * 1000}ms')
         # ---------------------------------------------------------#
         #   给图像增加灰条，实现不失真的resize
         #   也可以直接resize进行识别
         # ---------------------------------------------------------#
+
+        t1 = time.time()
         image_data, nw, nh = resize_image(image, (self.input_shape[1], self.input_shape[0]))
         # ---------------------------------------------------------#
         #   添加上batch_size维度
         # ---------------------------------------------------------#
         image_data = np.expand_dims(np.transpose(preprocess_input(np.array(image_data, np.float32)), (2, 0, 1)), 0)
+        t2 = time.time()
+        print(f' tocuda_before:{(t2 - t1) * 1000}ms')
 
         with torch.no_grad():
             images = torch.from_numpy(image_data)
+            t1 = time.time()
             if self.cuda:
-                images = images.cuda()
+                images = images.to('cuda')
+            t2 = time.time()
 
             # ---------------------------------------------------#
             #   图片传入网络进行预测
             # ---------------------------------------------------#
+            t2 = time.time()
+            print(f'deeplab:前处理时间:{(t2 - t1) * 1000}ms')
+
+            t1 = time.time()
             pr = self.net(images)[0]
+            t2 = time.time()
+            print(f'deeplab:预测时间:{(t2 - t1) * 1000}ms')
             # ---------------------------------------------------#
             #   取出每一个像素点的种类
             # ---------------------------------------------------#
@@ -164,6 +186,7 @@ class DeeplabV3(object):
         # ---------------------------------------------------------#
         #   计数
         # ---------------------------------------------------------#
+        t3 = time.time()
         if count:
             classes_nums = np.zeros([self.num_classes])
             total_points_num = orininal_h * orininal_w
@@ -186,6 +209,10 @@ class DeeplabV3(object):
             print("classes_nums:", classes_nums)
             text += "classes_nums:"
             text += str(classes_nums)
+        t4 = time.time()
+
+        print(f'deeplab的控制台输出后处理时间:{(t4 - t3) * 1000}ms')
+
         if self.mix_type == 0:
             # seg_img = np.zeros((np.shape(pr)[0], np.shape(pr)[1], 3))
             # for c in range(self.num_classes):
@@ -220,6 +247,8 @@ class DeeplabV3(object):
             #   将新图片转换成Image的形式
             # ------------------------------------------------#
             image = Image.fromarray(np.uint8(seg_img))
+        t4 = time.time()
+        print(f'deeplab后处理时间:{(t4 - t3) * 1000}ms')
         return image, text, ratio
 
 
@@ -365,3 +394,9 @@ def get_miou_png(self, image):
 
     image = Image.fromarray(np.uint8(pr))
     return image
+
+    def stream_inference(self, frame_tensor):
+        """专为视频流优化的推理方法"""
+        with torch.no_grad(), torch.cuda.amp.autocast():
+            pr = self.net(frame_tensor)[0]
+            return pr.argmax(dim=0)  # 直接在GPU上执行argmax
