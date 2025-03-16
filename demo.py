@@ -68,7 +68,7 @@ class FixedCameraApp(QWidget):
 
         # 启动定时器（如果未运行）
         if not self.timer.isActive():
-            self.timer.start()  # 30ms间隔（约33帧/秒）
+            self.timer.start()
 
         # 恢复显示区域（可选）
         self.label.setStyleSheet("background-color: none;")
@@ -76,10 +76,13 @@ class FixedCameraApp(QWidget):
     def initUI(self, x, y):
         # 窗口设置
         self.setWindowTitle("固定尺寸摄像头")
+
         # 计算屏幕中心坐标
-        desktop = QDesktopWidget().availableGeometry()
+        # desktop = QDesktopWidget().availableGeometry()
         # x = (desktop.width() - 512) // 2
         # y = (desktop.height() - 512) // 2
+
+
         self.setGeometry(x, y, videoWidth, videoHeight)  # 左上角坐标(0,0)，尺寸512x512
         self.setFixedSize(videoWidth, videoHeight)  # 禁止调整窗口大小
         # 视频显示区域
@@ -92,8 +95,7 @@ class FixedCameraApp(QWidget):
         """强制缩放画面到512x512像素"""
         ret, frame = self.capture.read()
         print(f"正在检测~")
-
-        # todo frame丢进模型里，然后在界面显示融合后的图片
+        print(f'--------------------------start-----------------------------------------------------')
         fps = 0.0
         if ret:
             frame = cv2.resize(frame, (videoWidth, videoHeight))
@@ -108,7 +110,7 @@ class FixedCameraApp(QWidget):
             # TODO 检测完成之后开启另外一个线程去显示画面。
             delta_ms = (t2 - t1) * 1000
             print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
-            t3 = time.time()
+
             # 偶数打开控制
             # 0号摄像头处理逻辑
             if self.id == 0:
@@ -116,6 +118,7 @@ class FixedCameraApp(QWidget):
                     self.flag = 0
                 else:
                     self.flag = 1
+
             # 1号摄像头处理逻辑
             if self.id == 1:
                 if hutao_ratio > 2:
@@ -126,22 +129,15 @@ class FixedCameraApp(QWidget):
             t3 = time.time()
             # 发送指令
             self.stm32Serial.send_to_stm32(message=str(self.flag))
-
             # 计算延迟
             t4 = time.time()
-            print(f"串口发送延迟: {t4 - t3:.6f} 毫秒")
+            print(f"串口发送延迟: {t4 - t3:.3f} 毫秒")
 
-            #
-            # if self.flag == 0:
-            #     self.flag = 1
-            # else:
-            #     self.flag = 0
+
             frame = np.array(img)
 
             # RGBtoBGR满足opencv显示格式
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            # print(text)
-            label_msg = text
             fps = (fps + (1. / (t2 - t1))) / 2
             fps = (fps + (1. / (time.time() - t1))) / 2
             print("fps= %.2f" % (fps))
@@ -164,7 +160,7 @@ class FixedCameraApp(QWidget):
             self.msgLabel.adjustSize()
             t4 = time.time()
             print(f'模型后处理消耗时间:{(t4 - t3) * 1000}ms')
-            print(f'-------------------------------------------------------------------------------')
+            print(f'--------------------------end-----------------------------------------------------')
 
     def closeEvent(self, event):
         """关闭时释放资源"""

@@ -58,7 +58,7 @@ class DeeplabV3(object):
         #   是否使用Cuda
         #   没有GPU可以设置成False
         # -------------------------------#
-        "cuda": False,
+        "cuda": True,
     }
 
     # ---------------------------------------------------#
@@ -117,7 +117,7 @@ class DeeplabV3(object):
         #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
         #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
         # ---------------------------------------------------------#
-
+        t1 = time.time()
         image = cvtColor(image)
 
         # ---------------------------------------------------#
@@ -128,32 +128,26 @@ class DeeplabV3(object):
             old_img = copy.deepcopy(image)
             t_old_end = time.time()
             print(f'备份old的时间:{(t_old_end - t_old_start) * 1000}')
-        t1 = time.time()
+
         orininal_h = np.array(image).shape[0]
         orininal_w = np.array(image).shape[1]
-        t2 = time.time()
-        print(f' orininal_w:{(t2 - t1) * 1000}ms')
+
         # ---------------------------------------------------------#
         #   给图像增加灰条，实现不失真的resize
         #   也可以直接resize进行识别
         # ---------------------------------------------------------#
 
-        t1 = time.time()
         image_data, nw, nh = resize_image(image, (self.input_shape[1], self.input_shape[0]))
         # ---------------------------------------------------------#
         #   添加上batch_size维度
         # ---------------------------------------------------------#
         image_data = np.expand_dims(np.transpose(preprocess_input(np.array(image_data, np.float32)), (2, 0, 1)), 0)
-        t2 = time.time()
-        print(f' tocuda_before:{(t2 - t1) * 1000}ms')
 
         with torch.no_grad():
             images = torch.from_numpy(image_data)
-            t1 = time.time()
+
             if self.cuda:
                 images = images.to('cuda')
-            t2 = time.time()
-
             # ---------------------------------------------------#
             #   图片传入网络进行预测
             # ---------------------------------------------------#
@@ -182,6 +176,7 @@ class DeeplabV3(object):
             # ---------------------------------------------------#
             pr = pr.argmax(axis=-1)
         text = ""
+        hutao_ratio = 0
         # ---------------------------------------------------------#
         #   计数
         # ---------------------------------------------------------#
@@ -196,7 +191,6 @@ class DeeplabV3(object):
             print('-' * 63)
             text += '-' * 63 + "\n"
             # hutao的像素比率
-            hutao_ratio = 0
             for i in range(self.num_classes):
                 num = np.sum(pr == i)
                 ratio = num / total_points_num * 100
