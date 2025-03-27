@@ -15,9 +15,9 @@ from msg_send import stm32Serial
 videoWidth = 512
 videoHeight = 512
 video_port = 0 + cv2.CAP_DSHOW
-port = 'COM9'
+port = 'COM7'
 deeplab = DeeplabV3()
-
+my_class=["background", "hutao_all","walnut_half"]
 
 class FixedCameraApp(QWidget):
     '''
@@ -107,7 +107,7 @@ class FixedCameraApp(QWidget):
             frame = Image.fromarray(np.uint8(frame))
             t1 = time.time()
             # 进行检测
-            img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=["background", "hutao"])
+            img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=my_class)
             t2 = time.time()
             # TODO 检测完成之后开启另外一个线程去显示画面。
             delta_ms = (t2 - t1) * 1000
@@ -174,7 +174,7 @@ class FixedCameraApp(QWidget):
             frame = Image.fromarray(np.uint8(frame))
             t1 = time.time()
             # 进行检测
-            img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=["background", "hutao"])
+            img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=my_class)
             t2 = time.time()
             # TODO 检测完成之后开启另外一个线程去显示画面。
             delta_ms = (t2 - t1) * 1000
