@@ -46,6 +46,7 @@ class FixedCameraApp(QWidget):
         self.id = id  # 摄像头编号
         self.time = time
 
+
     def stop(self):
         if self.timer.isActive():
             self.timer.stop()
@@ -92,13 +93,16 @@ class FixedCameraApp(QWidget):
 
     def update_frame(self):
         """强制缩放画面到512x512像素"""
+
         ret0, frame0 = self.capture0.read()
         ret1, frame1 = self.capture1.read()
+
         print(f"正在检测~")
 
         # todo frame丢进模型里，然后在界面显示融合后的图片
         fps = 0.0
         start1 = time.time()
+
         if ret0:
             frame = cv2.resize(frame0, (videoWidth, videoHeight))
             # 格式转变，BGRtoRGB
@@ -166,6 +170,7 @@ class FixedCameraApp(QWidget):
         end1 = time.time()
         print(f'1号摄像头检测的时间:{(end1 - start1) * 1000}ms')
         start2 = time.time()
+
         if ret1:
             frame = cv2.resize(frame1, (videoWidth, videoHeight))
             # 格式转变，BGRtoRGB
