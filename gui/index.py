@@ -21,28 +21,27 @@ my_class = ["background", "hutao_all", "walnut_half"]
 import queue
 
 # 创建一个无界队列（默认最大容量为无限大）
-shared_photo_frame_0 = queue.Queue()
-shared_photo_ret_0 = queue.Queue()
-shared_photo_frame_1 = queue.Queue()
-shared_photo_ret_1 = queue.Queue()
+shared_photo_frame_0 = queue.Queue(maxsize=1)
+shared_photo_ret_0 = queue.Queue(maxsize=1)
+shared_photo_frame_1 = queue.Queue(maxsize=1)
+shared_photo_ret_1 = queue.Queue(maxsize=1)
 cap0 = cv2.VideoCapture(0)
 cap1 = cv2.VideoCapture(1)
 th_flag = True
 
 
 # 定义线程要执行的函数
-def add_data(shared_list_frame, shared_list_ret, value, cap):
+def add_data(shared_list_frame, shared_list_ret,value, cap):
     print('开启多线程成功！！！！')
-
     while th_flag:
         start1 = time.time()
-        time.sleep(0.065)
+        # time.sleep(0.015)
         ret, frame = cap.read()
         start2 = time.time()
-        print(f'cap号摄像头读取照片时间{(start2 - start1) * 1000}ms')
-        shared_list_frame.put(frame)
-        shared_list_ret.put(ret)
-        print(f"Added {value} by {threading.current_thread().name} to{cap}")
+        shared_list_frame.put(frame, block=True)
+        shared_list_ret.put(ret, block=True)
+        print(f'{cap}:摄像头读取照片时间{(start2 - start1) * 1000}ms')
+        print(f"Photo Added  by {threading.current_thread().name} to{cap}")
 
 
 class FixedCameraAppChild(QWidget):
@@ -84,7 +83,7 @@ class FixedCameraApp(QWidget):
     msgLabel=输出标签
     '''
 
-    def __init__(self, parent, msgLabel, stm32Serial, child_winodw, id, x=0, y=0, time=50):
+    def __init__(self, parent, msgLabel, stm32Serial, child_winodw, id, x=0, y=0, time=10):
         super().__init__(parent)
         # 初始化窗口和摄像头
         self.initUI(x, y)
@@ -159,13 +158,10 @@ class FixedCameraApp(QWidget):
             else:
                 self.flag = 3
 
-            t3 = time.time()
             # 发送指令
             self.stm32Serial.send_to_stm32(message=str(self.flag))
 
             # 计算延迟
-            t4 = time.time()
-            print(f"串口发送延迟: {t4 - t3:.6f} 毫秒")
 
             #
             # if self.flag == 0:
@@ -177,7 +173,6 @@ class FixedCameraApp(QWidget):
             # RGBtoBGR满足opencv显示格式
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             # print(text)
-            label_msg = text
             fps = (fps + (1. / (t2 - t1))) / 2
             fps = (fps + (1. / (time.time() - t1))) / 2
             print("fps= %.2f" % (fps))
@@ -200,9 +195,6 @@ class FixedCameraApp(QWidget):
             self.msgLabel.adjustSize()
             t4 = time.time()
             print(f'模型后处理消耗时间:{(t4 - t3) * 1000}ms')
-            print(f'-------------------------------------------------------------------------------')
-        end1 = time.time()
-        print(f'摄像头检测的时间:{(end1 - start1) * 1000}ms')
 
     def initUI(self, x, y):
         # 窗口设置
@@ -233,34 +225,33 @@ class FixedCameraApp(QWidget):
                                            shared_photo_frame_1, shared_photo_ret_1, "cap1_take_photo!", cap1),
                                        name="photo-th_1")
             thread1.start()
-            time.sleep(0.6)
             # shared_photo_frame_0[:] = [shared_photo_frame_0[-2:]]
             # shared_photo_frame_1[:] = [shared_photo_frame_1[-2:]]
             # shared_photo_ret_0[:] = [shared_photo_ret_0[-2:]]
             # shared_photo_ret_1[:] = [shared_photo_ret_1[-2:]]
 
-        while shared_photo_frame_0.qsize() < 1 and shared_photo_frame_1.qsize() < 1:
-            print('等待摄像头开启')
-
-        start1 = time.time()
+        # while shared_photo_frame_0.qsize() < 1 and shared_photo_frame_1.qsize() < 1:
+        #     print('等待摄像头开启')
         frame0 = shared_photo_frame_0.get(timeout=3)
         ret0 = shared_photo_ret_0.get(timeout=3)
-        start2 = time.time()
-        print(f'0号缓冲池读取照片时间{(start2 - start1) * 1000}ms')
 
-        start1 = time.time()
         frame1 = shared_photo_frame_1.get(timeout=3)
         ret1 = shared_photo_ret_1.get(timeout=3)
-        start2 = time.time()
-        print(f'0号缓冲池读取照片时间{(start2 - start1) * 1000}ms')
-        print(f"正在检测~")
 
         # todo frame丢进模型里，然后在界面显示融合后的图片
-        fps = 0.0
-        start1 = time.time()
-
+        # fps = 0.0
+        # start1 = time.time()
+        t1 = time.time()
         self.window_detect(ret0, frame0, 7, self.label)
+        t2 = time.time()
+        print(f'cap0摄像头处理图片时间:{(t2 - t1) * 1000}ms')
+        print(f'-------------------------------------------------------------------------------')
+
+        t3 = time.time()
         self.window_detect(ret1, frame1, 3, self.child_winodw.labelchild)
+        t4 = time.time()
+        print(f'cap1摄像头处理图片时间:{(t4 - t3) * 1000}ms')
+        print(f'-------------------------------------------------------------------------------')
 
         # if ret1:
         #     frame = cv2.resize(frame1, (videoWidth, videoHeight))

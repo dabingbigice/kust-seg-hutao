@@ -208,8 +208,6 @@ class DeeplabV3(object):
             text += str(classes_nums)
         t4 = time.time()
 
-        print(f'deeplab的控制台输出后处理时间:{(t4 - t3) * 1000}ms')
-
         if self.mix_type == 0:
             # seg_img = np.zeros((np.shape(pr)[0], np.shape(pr)[1], 3))
             # for c in range(self.num_classes):
