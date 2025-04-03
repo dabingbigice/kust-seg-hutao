@@ -25,7 +25,7 @@ class DeeplabV3(object):
         #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
         #   验证集损失较低不代表miou较高，仅代表该权值在验证集上泛化性能较好。
         # -------------------------------------------------------------------#
-        "model_path": '../model/model_data/v3+ep080.pth',
+        "model_path": '../model/model_data/3-26-1000+数据增强/ep120-loss0.065-val_loss0.066.pth',
 
         # ----------------------------------------#
         #   所需要区分的类的个数+1
@@ -181,6 +181,8 @@ class DeeplabV3(object):
         #   计数
         # ---------------------------------------------------------#
         t3 = time.time()
+        # 0background 1all 2half 3other
+        class_flag = 0
         if count:
             classes_nums = np.zeros([self.num_classes])
             total_points_num = orininal_h * orininal_w
@@ -200,8 +202,12 @@ class DeeplabV3(object):
                     text += '-' * 63 + "\n"
                     print('-' * 63)
                 classes_nums[i] = num
-                if i != 0:
+                if i != 0 and ratio > hutao_ratio:
+                    # 返回最大的ration作为分类结果
                     hutao_ratio = ratio
+                    class_flag = i
+                if i == 0 and ratio > 99.5:
+                    class_flag = 0
 
             print("classes_nums:", classes_nums)
             text += "classes_nums:"
@@ -244,7 +250,7 @@ class DeeplabV3(object):
             image = Image.fromarray(np.uint8(seg_img))
         t4 = time.time()
         print(f'deeplab后处理时间:{(t4 - t3) * 1000}ms')
-        return image, text, hutao_ratio
+        return image, text, hutao_ratio, class_flag
 
 
 def get_FPS(self, image, test_interval):

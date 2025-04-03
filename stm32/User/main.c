@@ -28,6 +28,7 @@ int main(void)
 			Serial_SendByte(RxData);			//串口将收到的数据回传回去，用于测试
 			if(RxData==0){
 				LED1_ON();
+				Delay_ms(10);
 			}
 			if(RxData==1){
 				LED1_OFF();
@@ -37,6 +38,7 @@ int main(void)
 			}
 			if(RxData==2){
 				LED2_ON();
+				Delay_ms(10);
 			}
 			if(RxData==3){
 				LED2_OFF();

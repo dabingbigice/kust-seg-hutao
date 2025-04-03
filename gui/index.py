@@ -25,23 +25,33 @@ shared_photo_frame_0 = queue.Queue(maxsize=1)
 shared_photo_ret_0 = queue.Queue(maxsize=1)
 shared_photo_frame_1 = queue.Queue(maxsize=1)
 shared_photo_ret_1 = queue.Queue(maxsize=1)
+
 cap0 = cv2.VideoCapture(0)
+cap0.set(cv2.CAP_PROP_FRAME_WIDTH, videoWidth)
+cap0.set(cv2.CAP_PROP_FRAME_HEIGHT, videoHeight)
 cap1 = cv2.VideoCapture(1)
+cap1.set(cv2.CAP_PROP_FRAME_WIDTH, videoWidth)
+cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, videoHeight)
+lock0 = threading.Lock()
+lock1 = threading.Lock()
 th_flag = True
 
 
 # 定义线程要执行的函数
-def add_data(shared_list_frame, shared_list_ret,value, cap):
+def add_data(shared_list_frame, shared_list_ret, value, cap):
     print('开启多线程成功！！！！')
     while th_flag:
         start1 = time.time()
-        # time.sleep(0.015)
+        # time.sleep(0.05)
         ret, frame = cap.read()
         start2 = time.time()
-        shared_list_frame.put(frame, block=True)
-        shared_list_ret.put(ret, block=True)
+        try:
+            shared_list_frame.put(frame, block=False)
+            shared_list_ret.put(ret, block=False)
+        except queue.Full:
+            print("队列已满，丢弃当前帧")
         print(f'{cap}:摄像头读取照片时间{(start2 - start1) * 1000}ms')
-        print(f"Photo Added  by {threading.current_thread().name} to{cap}")
+        print(f"Photo Added  by {threading.current_thread().name} ")
 
 
 class FixedCameraAppChild(QWidget):
@@ -94,7 +104,7 @@ class FixedCameraApp(QWidget):
         self.deeplab = deeplab  # 初始化模型
         self.msgLabel = msgLabel  # 输出消息
         self.msgLabel.adjustSize()  # 输出消息自适应大小
-        self.flag = 0
+        self.flag = -1
         # self.stm32Serial = stm32Serial(port=port, baudrate=9600)  # 发送消息
         self.stm32Serial = stm32Serial  # 发送消息
         self.id = id  # 摄像头编号
@@ -131,7 +141,7 @@ class FixedCameraApp(QWidget):
         # 恢复显示区域（可选）
         self.label.setStyleSheet("background-color: none;")
 
-    def window_detect(self, ret, frame, th, label):
+    def window_detect(self, ret, frame, th, label, flag):
         print(f"正在检测~")
         # todo frame丢进模型里，然后在界面显示融合后的图片
         fps = 0.0
@@ -144,19 +154,33 @@ class FixedCameraApp(QWidget):
             frame = Image.fromarray(np.uint8(frame))
             t1 = time.time()
             # 进行检测
-            img, text, ratio = self.deeplab.detect_image(frame, count=True, name_classes=my_class)
+            img, text, ratio, class_flag = self.deeplab.detect_image(frame, count=True, name_classes=my_class)
+            # class_flag：0是背景，1是all,2是half,3是other
             t2 = time.time()
             # TODO 检测完成之后开启另外一个线程去显示画面。
             delta_ms = (t2 - t1) * 1000
             print(f"deeplab.detect_image检测速度: {delta_ms:.3f} 毫秒")
             t3 = time.time()
-            # 偶数打开控制
+            # 鸡数打开控制
             # 0号摄像头处理逻辑
+            if flag == 'rxd1' and class_flag == 1:
+                if ratio > 5:
+                    self.flag = 0
+                else:
+                    self.flag = 1
 
-            if ratio > th:
-                self.flag = 2
-            else:
+            if flag == 'rxd2' and class_flag == 2:
+                if ratio > 3:
+                    self.flag = 2
+                else:
+                    self.flag = 3
+
+            if flag == 'rxd1' and class_flag == 0:
+                self.flag = 1
+
+            if flag == 'rxd2' and class_flag == 0:
                 self.flag = 3
+
 
             # 发送指令
             self.stm32Serial.send_to_stm32(message=str(self.flag))
@@ -210,21 +234,31 @@ class FixedCameraApp(QWidget):
         self.label.setFixedSize(videoWidth, videoHeight)  # 固定标签尺寸
         self.label.setAlignment(Qt.AlignCenter)  # 内容居中
         self.label.setStyleSheet("background-color: black;")
+        thread0 = threading.Thread(target=add_data,
+                                   args=(
+                                       shared_photo_frame_0, shared_photo_ret_0, "cap0_take_photo!", cap0),
+                                   name="photo-th_0")
+        thread0.start()
+        thread1 = threading.Thread(target=add_data,
+                                   args=(
+                                       shared_photo_frame_1, shared_photo_ret_1, "cap1_take_photo!", cap1),
+                                   name="photo-th_1")
+        thread1.start()
 
     def update_frame(self):
         """强制缩放画面到512x512像素"""
-        if self.start_th:
-            self.start_th = False
-            thread0 = threading.Thread(target=add_data,
-                                       args=(
-                                           shared_photo_frame_0, shared_photo_ret_0, "cap0_take_photo!", cap0),
-                                       name="photo-th_0")
-            thread0.start()
-            thread1 = threading.Thread(target=add_data,
-                                       args=(
-                                           shared_photo_frame_1, shared_photo_ret_1, "cap1_take_photo!", cap1),
-                                       name="photo-th_1")
-            thread1.start()
+        # if self.start_th:
+        #     self.start_th = False
+        #     thread0 = threading.Thread(target=add_data,
+        #                                args=(
+        #                                    shared_photo_frame_0, shared_photo_ret_0, "cap0_take_photo!", cap0),
+        #                                name="photo-th_0")
+        #     thread0.start()
+        #     thread1 = threading.Thread(target=add_data,
+        #                                args=(
+        #                                    shared_photo_frame_1, shared_photo_ret_1, "cap1_take_photo!", cap1),
+        #                                name="photo-th_1")
+        #     thread1.start()
             # shared_photo_frame_0[:] = [shared_photo_frame_0[-2:]]
             # shared_photo_frame_1[:] = [shared_photo_frame_1[-2:]]
             # shared_photo_ret_0[:] = [shared_photo_ret_0[-2:]]
@@ -232,29 +266,31 @@ class FixedCameraApp(QWidget):
 
         # while shared_photo_frame_0.qsize() < 1 and shared_photo_frame_1.qsize() < 1:
         #     print('等待摄像头开启')
-        frame0 = shared_photo_frame_0.get(timeout=3)
-        ret0 = shared_photo_ret_0.get(timeout=3)
 
-        frame1 = shared_photo_frame_1.get(timeout=3)
-        ret1 = shared_photo_ret_1.get(timeout=3)
+
+
 
         # todo frame丢进模型里，然后在界面显示融合后的图片
         # fps = 0.0
         # start1 = time.time()
         t1 = time.time()
-        self.window_detect(ret0, frame0, 7, self.label)
+        frame0 = shared_photo_frame_0.get(timeout=5)
+        ret0 = shared_photo_ret_0.get(timeout=5)
+        self.window_detect(ret0, frame0, 7, self.label, 'rxd1')
         t2 = time.time()
         print(f'cap0摄像头处理图片时间:{(t2 - t1) * 1000}ms')
         print(f'-------------------------------------------------------------------------------')
 
         t3 = time.time()
-        self.window_detect(ret1, frame1, 3, self.child_winodw.labelchild)
+        frame1 = shared_photo_frame_1.get(timeout=5)
+        ret1 = shared_photo_ret_1.get(timeout=5)
+        self.window_detect(ret1, frame1, 4, self.child_winodw.labelchild, 'rxd2')
         t4 = time.time()
         print(f'cap1摄像头处理图片时间:{(t4 - t3) * 1000}ms')
         print(f'-------------------------------------------------------------------------------')
 
         # if ret1:
-        #     frame = cv2.resize(frame1, (videoWidth, videoHeight))
+        #     frame = cv2.resize(frame1, (videoWidth, videoHeight))d
         #     # 格式转变，BGRtoRGB
         #     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         #     # 转变成Image
@@ -321,8 +357,10 @@ class FixedCameraApp(QWidget):
 
     def closeEvent(self, event):
         """关闭时释放资源"""
-        if self.capture0.isOpened():
-            self.capture0.release()
+        if self.cap0.isOpened():
+            self.cap0.release()
+        if self.cap1.isOpened():
+            self.cap1.release()
         self.timer.stop()
         event.accept()
         self.stm32Serial.close_serial()

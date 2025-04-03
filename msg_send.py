@@ -7,7 +7,6 @@ class stm32Serial:
     def __init__(self, port, baudrate):
         self.ser = serial.Serial(port, baudrate, timeout=1)
         print(f'初始化stm32串口对象={self.ser}')
-
     def close_serial(self):
         self.ser.close()
         print(f'关闭串口结果={self.ser.is_open}')
