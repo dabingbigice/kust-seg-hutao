@@ -4,7 +4,9 @@
 [![Python 3.8](https://img.shields.io/badge/Python-3.8-blue.svg)](https://www.python.org/)
 [![PyTorch 2.3](https://img.shields.io/badge/PyTorch-2.3-red.svg)](https://pytorch.org/)
 
-> 基于深度学习的物料动态分选系统 | 昆明理工大学现代农业工程学院
+> ### **基于深度学习的核桃仁动态分选系统 | 昆明理工大学现代农业工程学院**
+>
+> ![](p3.jpg)
 
 ## 📖 项目概述
 
@@ -14,8 +16,10 @@
 - 🏭 ​**工业级动态分选架构**​（0.5m/s传送带速度）
 - 💨 ​**气动柔性分选技术**​（0.4-0.6kPa无损喷射）
 
-## 🤖系统实物图![](p1.jpg)
-
+## 🤖系统实物图
+![](p1.jpg)
+## 现场作业图
+![](p2.jpg)
 ## 🚀 核心功能
 
 | 模块         | 技术指标        | 创新点                |
@@ -80,11 +84,11 @@
 - ➡️ 视频演示  https://pan.baidu.com/s/1_AC_rG8YYO8vLc5EAFuEQg?pwd=feei 提取码: feei 
 
 ### 软件
-- ​**操作系统**​：Windows 11
-- ​**编程语言**​：Python 3.8
-- ​**框架**​：PyTorch 2.3.1，CUDA 11.8
-- ​**模型**​：优化的 DeepLabv3+，使用 MobileNetV2 解码器
-- ​**库**​：OpenCV，PyQt 用于图形界面
+- **操作系统**​：Windows 11
+- **编程语言**​：Python 3.8
+- **框架**​：PyTorch 2.3.1，CUDA 11.8
+- **模型**​：优化的 DeepLabv3+，使用 MobileNetV2 解码器
+- **库**​：OpenCV，PyQt 用于图形界面
 
 ### 软件设置
 ```bash
@@ -98,3 +102,4 @@ pip install -r requirements.txt
 
 # 运行应用程序
 python gui/index.py
+```
